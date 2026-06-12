@@ -25,19 +25,20 @@ public class OnvifDiscovery
         await foreach (var device in discovery.DiscoverAsync(timeoutSeconds, cts.Token))
         {
             OnvifCameraInfo? info = null;
-            
+            try
+            {
                 //create the Media client. this includes SOAP binding,
                 //gets the media service URL by requesting cams capabilities
                 //create the end point
                 var media = await OnvifClientFactory.CreateMediaClientAsync(device.Address, username, password);
-                
+
                 //ask cam for list of stream profiles
                 var profilesResponse = await media.GetProfilesAsync();
                 Console.WriteLine($"DEVICE FOUND: {device.Address}");
-                
+
                 //grab the token - an id you pass to GetStreamUri - "give me the URL for this stream"
                 string token = profilesResponse.Profiles[0].token;
-                
+
                 //set up the stream object with these params
                 var streamSetup = new StreamSetup
                 {
@@ -55,7 +56,15 @@ public class OnvifDiscovery
                     XAddress = device.XAddresses.FirstOrDefault()?.ToString(),
                     RtspUri = streamUri.Uri,
                     FoundAt = DateTime.Now,
+
                 };
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"Skipped: {device.Address}: {e.Message}");
+                continue;
+            }
+
             
             if (info != null)
                 yield return info;
